@@ -30,6 +30,10 @@ typedef struct NesRom{
 
 
 NesRom* load_nes_rom(const char* filename);
+
+// 新增：解耦后的内存加载接口，适用于无文件系统（如 Flash 直接读取）
+NesRom* load_nes_rom_from_buffer(const uint8_t* data, size_t size);
+
 void free_nes_rom(NesRom* rom);
 int validate_header(const INesHeader* hdr);
 
