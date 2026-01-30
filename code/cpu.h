@@ -22,6 +22,8 @@ typedef struct CPU{
     uint16_t pc;     // Program Counter
     uint8_t  status; // Status Register
 
+    uint8_t jammed; // 新增：0 = 正常, 1 = 死机
+
     //连接总线
     Bus* bus;
 
