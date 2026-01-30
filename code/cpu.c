@@ -410,3 +410,110 @@ uint8_t fetch(CPU* cpu){
 
 
 //cpu寻址模式的实现
+static uint8_t addr_imp(CPU* cpu){
+    return 0;
+}
+
+static uint8_t addr_acc(CPU* cpu){
+    cpu->fetched_data = cpu->a;
+    return 0;
+}
+
+static uint8_t addr_imm(CPU* cpu){
+    cpu->addr_abs = cpu->pc++;
+    return 0;
+}
+
+static uint8_t addr_zp0(CPU* cpu){
+    cpu->addr_abs = cpu_read(cpu, cpu->pc++);
+    cpu->addr_abs &= 0x00FF; // 确保高位为 0
+    return 0;
+}
+static uint8_t addr_zpx(CPU* cpu){
+    cpu->addr_abs = cpu_read(cpu,cpu->pc++) + cpu->x;
+    cpu->addr_abs &= 0x00FF; // 强制限制在零页，溢出回卷
+    return 0;
+}
+
+static uint8_t addr_zpy(CPU* cpu){
+    cpu->addr_abs = cpu_read(cpu,cpu->pc++) + cpu->y;
+    cpu->addr_abs &= 0x00FF; // 强制限制在零页，溢出回卷
+    return 0;
+}
+
+static uint8_t addr_abs(CPU* cpu){
+    uint16_t lo = cpu_read(cpu,cpu->pc++);
+    uint16_t hi = cpu_read(cpu,cpu->pc++);
+    cpu->addr_abs = (hi << 8) | lo;
+    return 0;
+}
+
+static uint8_t addr_abx(CPU* cpu){
+    uint16_t lo = cpu_read(cpu,cpu->pc++);
+    uint16_t hi = cpu_read(cpu,cpu->pc++);
+    cpu->addr_abs = ((hi << 8) | lo) + cpu->x;
+    if((cpu->addr_abs & 0xFF00) != (hi<<8)){
+        return 1;
+    }
+    return 0;
+}
+
+
+static uint8_t addr_aby(CPU* cpu){
+    uint16_t lo = cpu_read(cpu,cpu->pc++);
+    uint16_t hi = cpu_read(cpu,cpu->pc++);
+    cpu->addr_abs = ((hi << 8) | lo) + cpu->y;
+    if((cpu->addr_abs & 0xFF00) != (hi<<8)){
+        return 1;
+    }
+    return 0;
+}
+
+static uint8_t addr_rel(CPU* cpu){
+    cpu->addr_rel = cpu_read(cpu,cpu->pc++);
+    // 如果读取的是负数（最高位为1），由于 addr_rel 是 uint16_t，
+    // 需要通过按位或操作将其扩展为 16 位有符号数的效果（即高 8 位全为 1）。
+    if(cpu->addr_rel & 0x80){
+        cpu->addr_rel |= 0xFF00;
+    }
+    return 0;
+}
+
+static uint8_t addr_ind(CPU* cpu){
+    uint16_t ptr_lo = cpu_read(cpu,cpu->pc++);
+    uint16_t ptr_hi = cpu_read(cpu,cpu->pc++);
+    uint16_t ptr = ptr_lo | (ptr_hi << 8);
+    if (ptr_lo == 0x00FF){
+        // 如果指针在页面边界（如 $00FF），读取低位在 $00FF，高位会错误地从 $0000 读取，而不是 $0100
+        cpu->addr_abs = (cpu_read(cpu,ptr & 0xFF00)<<8) | cpu_read(cpu,ptr);
+    } else {
+        // 正常情况，直接读取指针指向的地址
+        cpu->addr_abs = (cpu_read(cpu,ptr+1)<<8) | cpu_read(cpu,ptr);
+    }
+}
+
+static uint8_t addr_izx(CPU* cpu){
+    uint16_t t = cpu_read(cpu,cpu->pc++);
+    // 强制在零页内回卷：(t + X) & 0xFF
+    uint16_t lo = cpu_read(cpu,(t + cpu->x) & 0x00FF);
+    uint16_t hi = cpu_read(cpu,(t + cpu->x + 1) & 0x00FF);
+    cpu->addr_abs = (hi << 8) | lo;
+    return 0;
+}
+
+static uint8_t addr_izy(CPU* cpu){
+    uint16_t t = cpu_read(cpu, cpu->pc++);
+
+    // 从零页 t 处读取 16 位指针
+    uint16_t lo = cpu_read(cpu, t & 0x00FF);
+    uint16_t hi = cpu_read(cpu, (t + 1) & 0x00FF);
+
+    cpu->addr_abs = (hi << 8) | lo;
+    cpu->addr_abs += cpu->y; // 加上 Y 偏移
+
+    // 检查跨页
+    if ((cpu->addr_abs & 0xFF00) != (hi << 8)) {
+        return 1;
+    }
+    return 0;
+}
