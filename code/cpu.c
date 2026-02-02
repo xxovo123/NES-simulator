@@ -517,3 +517,1232 @@ static uint8_t addr_izy(CPU* cpu){
     }
     return 0;
 }
+
+
+// --- 指令实现函数 ---
+// LDA: Load Accumulator
+static uint8_t op_lda(CPU* cpu){
+    // 步骤 1: 取数
+    // fetch() 函数会自动根据之前的寻址模式（比如 Immediate 或 Absolute），
+    // 把数据读取到 cpu->fetched_data 中。
+    // 这对应图片里的 "Loads a byte of memory"。
+    fetch(cpu);
+
+    // 步骤 2: 执行操作
+    // 对应图片里的 "into the accumulator" (A = M)
+    cpu->a = cpu->fetched_data;
+
+    // 步骤 3: 更新标志位
+    // 对应表格里的 "Z: Set if A = 0"
+    set_flag(cpu, Z, cpu->a == 0x00);
+    // 对应表格里的 "N: Set if bit 7 of A is 1"
+    set_flag(cpu, N, cpu->a & 0x80);
+
+    // 步骤 4: 处理时钟周期
+    // 图片最下方的表格里，很多模式写着 "+1 if page crossed"。
+    // 返回 1 告诉模拟器："如果寻址时发生了跨页，允许增加这个额外周期"。
+    return 1;
+}
+
+// LDX: Load X Register
+static uint8_t op_ldx(CPU* cpu){
+    // 步骤 1: 取数
+    fetch(cpu);
+    // 步骤 2: 执行操作
+    // 对应图片里的 "into the X register" (X = M)
+    cpu->x = cpu->fetched_data;
+    // 步骤 3: 更新标志位
+    // 对应表格里的 "Z: Set if X = 0"
+    set_flag(cpu, Z, cpu->x == 0x00);
+    // 对应表格里的 "N: Set if bit 7 of X is 1"
+    set_flag(cpu, N, cpu->x & 0x80);
+    // 步骤 4: 处理时钟周期
+    // 图片最下方的表格里，很多模式写着 "+1 if page crossed"。
+    // 返回 1 告诉模拟器："如果寻址时发生了跨页，允许增加这个额外周期"。
+    return 1;
+}
+
+//LDY: Load Y Register
+static uint8_t op_ldy(CPU* cpu){
+    // 步骤 1: 取数
+    fetch(cpu);
+    // 步骤 2: 执行操作
+    // 对应图片里的 "into the Y register" (Y = M)
+    cpu->y = cpu->fetched_data;
+    // 步骤 3: 更新标志位
+    // 对应表格里的 "Z: Set if Y = 0"
+    set_flag(cpu, Z, cpu->y == 0x00);
+    // 对应表格里的 "N: Set if bit 7 of Y is 1"
+    set_flag(cpu, N, cpu->y & 0x80);
+    // 步骤 4: 处理时钟周期
+    // 图片最下方的表格里，很多模式写着 "+1 if page crossed"。
+    // 返回 1 告诉模拟器："如果寻址时发生了跨页，允许增加这个额外周期"。
+    return 1;
+}
+
+// STA: Store Accumulator
+static uint8_t op_sta(CPU* cpu){
+    // 步骤 1: 不需要 fetch()
+    // 因为我们要把寄存器的数据写出去，而不是读进来。
+    // 目标地址 cpu->addr_abs 已经在之前的寻址函数(addrmode)里算好了。
+    // 步骤 2: 执行操作
+    // 对应图片里的 "stores the accumulator in memory" (M = A)
+    cpu_write(cpu,cpu->addr_abs,cpu->a);
+    // 步骤 3: 更新标志位
+    // 没有影响标志位的操作，所以不需要更新
+    // 图片里没有 "(+1 if page crossed)"。
+    // 这意味着即使 addr_abx() 因为跨页返回了 1，
+    // STA 指令也不允许增加额外周期（写入操作必须稳定，不能贪快）。
+    // 所以强制返回 0。
+    return 0;
+}
+
+//STX: Store X Register
+static uint8_t op_stx(CPU* cpu){
+    // 步骤 1: 不需要 fetch()
+    // 因为我们要把寄存器的数据写出去，而不是读进来。
+    // 目标地址 cpu->addr_abs 已经在之前的寻址函数(addrmode)里算好了。
+    // 步骤 2: 执行操作
+    // 对应图片里的 "stores the X register in memory" (M = X)
+    cpu_write(cpu,cpu->addr_abs,cpu->x);
+    // 步骤 3: 更新标志位
+    // 没有影响标志位的操作，所以不需要更新
+    // 图片里没有 "(+1 if page crossed)"。
+    // 这意味着即使 addr_abx() 因为跨页返回了 1，
+    // STX 指令也不允许增加额外周期（写入操作必须稳定，不能贪快）。
+    // 所以强制返回 0。
+    return 0;
+}
+
+//STY: Store Y Register
+static uint8_t op_sty(CPU* cpu){
+    // 步骤 1: 不需要 fetch()
+    // 因为我们要把寄存器的数据写出去，而不是读进来。
+    // 目标地址 cpu->addr_abs 已经在之前的寻址函数(addrmode)里算好了。
+    // 步骤 2: 执行操作
+    // 对应图片里的 "stores the Y register in memory" (M = Y)
+    cpu_write(cpu,cpu->addr_abs,cpu->y);
+    // 步骤 3: 更新标志位
+    // 没有影响标志位的操作，所以不需要更新
+    // 图片里没有 "(+1 if page crossed)"。
+    // 这意味着即使 addr_abx() 因为跨页返回了 1，
+    // STY 指令也不允许增加额外周期（写入操作必须稳定，不能贪快）。
+    // 所以强制返回 0。
+    return 0;
+}
+
+//TAX: Transfer Accumulator to X Register
+static uint8_t op_tax(CPU* cpu){
+    // 步骤 1: 执行操作
+    // 对应图片里的 "transfers the accumulator to the X register" (X = A)
+    cpu->x = cpu->a;
+    // 步骤 2: 更新标志位
+    // 对应表格里的 "Z: Set if X = 0"
+    set_flag(cpu, Z, cpu->x == 0x00);
+    // 对应表格里的 "N: Set if bit 7 of X is 1"
+    set_flag(cpu, N, cpu->x & 0x80);
+    // 步骤 3: 处理时钟周期
+    return 0;
+}
+
+//TAY: Transfer Accumulator to Y Register
+static uint8_t op_tay(CPU* cpu){
+    // 步骤 1: 执行操作
+    // 对应图片里的 "transfers the accumulator to the Y register" (Y = A)
+    cpu->y = cpu->a;
+    // 步骤 2: 更新标志位
+    // 对应表格里的 "Z: Set if Y = 0"
+    set_flag(cpu, Z, cpu->y == 0x00);
+    // 对应表格里的 "N: Set if bit 7 of Y is 1"
+    set_flag(cpu, N, cpu->y & 0x80);
+    // 步骤 3: 处理时钟周期
+    return 0;
+}
+
+//TSX: Transfer Stack Pointer to X Register
+static uint8_t op_tsx(CPU* cpu){
+    // 步骤 1: 执行操作
+    // 对应图片里的 "transfers the stack pointer to the X register" (X = SP)
+    cpu->x = cpu->stkp;
+    // 步骤 2: 更新标志位
+    // 对应表格里的 "Z: Set if X = 0"
+    set_flag(cpu, Z, cpu->x == 0x00);
+    // 对应表格里的 "N: Set if bit 7 of X is 1"
+    set_flag(cpu, N, cpu->x & 0x80);
+    // 步骤 3: 处理时钟周期
+    return 0;
+}
+
+//TXA: Transfer X Register to Accumulator
+static uint8_t op_txa(CPU* cpu){
+    // 步骤 1: 执行操作
+    // 对应图片里的 "transfers the X register to the accumulator" (A = X)
+    cpu->a = cpu->x;
+    // 步骤 2: 更新标志位
+    // 对应表格里的 "Z: Set if A = 0"
+    set_flag(cpu, Z, cpu->a == 0x00);
+    // 对应表格里的 "N: Set if bit 7 of A is 1"
+    set_flag(cpu, N, cpu->a & 0x80);
+    // 步骤 3: 处理时钟周期
+    return 0;
+}
+
+//TXS: Transfer X Register to Stack Pointer
+static uint8_t op_txs(CPU* cpu){
+    // 步骤 1: 执行操作
+    // 对应图片里的 "transfers the X register to the stack pointer" (SP = X)
+    cpu->stkp = cpu->x;
+    // 步骤 2: 更新标志位
+    // 没有影响标志位的操作，所以不需要更新
+    // 图片里没有 "(+1 if page crossed)"。
+    // 这意味着即使 addr_abx() 因为跨页返回了 1，
+    // TXS 指令也不允许增加额外周期（写入操作必须稳定，不能贪快）。
+    // 所以强制返回 0。
+    return 0;
+}
+
+//TYA: Transfer Y Register to Accumulator
+static uint8_t op_tya(CPU* cpu){
+    // 步骤 1: 执行操作
+    // 对应图片里的 "transfers the Y register to the accumulator" (A = Y)
+    cpu->a = cpu->y;
+    // 步骤 2: 更新标志位
+    // 对应表格里的 "Z: Set if A = 0"
+    set_flag(cpu, Z, cpu->a == 0x00);
+    // 对应表格里的 "N: Set if bit 7 of A is 1"
+    set_flag(cpu, N, cpu->a & 0x80);
+    // 步骤 3: 处理时钟周期
+    return 0;
+}
+
+//CLC: Clear Carry Flag
+static uint8_t op_clc(CPU* cpu){
+    // 步骤 1: 执行操作
+    // 对应图片里的 "clears the carry flag" (C = 0)
+    set_flag(cpu, C, 0);
+    // 步骤 2: 更新标志位
+    // 没有影响标志位的操作，所以不需要更新
+    // 图片里没有 "(+1 if page crossed)"。
+    // 这意味着即使 addr_abx() 因为跨页返回了 1，
+    // CLC 指令也不允许增加额外周期（写入操作必须稳定，不能贪快）。
+    // 所以强制返回 0。
+    return 0;
+}
+
+//CLD: Clear Decimal Mode Flag
+static uint8_t op_cld(CPU* cpu){
+    // 步骤 1: 执行操作
+    // 对应图片里的 "clears the decimal mode flag" (D = 0)
+    set_flag(cpu, D, 0);
+    // 步骤 2: 更新标志位
+    // 没有影响标志位的操作，所以不需要更新
+    // 图片里没有 "(+1 if page crossed)"。
+    // 这意味着即使 addr_abx() 因为跨页返回了 1，
+    // CLD 指令也不允许增加额外周期（写入操作必须稳定，不能贪快）。
+    // 所以强制返回 0。
+    return 0;
+}
+
+//CLI: Clear Interrupt Disable Flag
+static uint8_t op_cli(CPU* cpu){
+    // 步骤 1: 执行操作
+    // 对应图片里的 "clears the interrupt disable flag" (I = 0)
+    set_flag(cpu, I, 0);
+    // 步骤 2: 更新标志位
+    // 没有影响标志位的操作，所以不需要更新
+    // 图片里没有 "(+1 if page crossed)"。
+    // 这意味着即使 addr_abx() 因为跨页返回了 1，
+    // CLI 指令也不允许增加额外周期（写入操作必须稳定，不能贪快）。
+    // 所以强制返回 0。
+    return 0;
+}
+
+
+//CLV: Clear Overflow Flag
+static uint8_t op_clv(CPU* cpu){
+    // 步骤 1: 执行操作
+    // 对应图片里的 "clears the overflow flag" (V = 0)
+    set_flag(cpu, V, 0);
+    // 步骤 2: 更新标志位
+    // 没有影响标志位的操作，所以不需要更新
+    // 图片里没有 "(+1 if page crossed)"。
+    // 这意味着即使 addr_abx() 因为跨页返回了 1，
+    // CLV 指令也不允许增加额外周期（写入操作必须稳定，不能贪快）。
+    // 所以强制返回 0。
+    return 0;
+}
+
+//SEC: Set Carry Flag
+static uint8_t op_sec(CPU* cpu){
+    // 步骤 1: 执行操作
+    // 对应图片里的 "sets the carry flag" (C = 1)
+    set_flag(cpu, C, 1);
+    // 步骤 2: 更新标志位
+    // 没有影响标志位的操作，所以不需要更新
+    // 图片里没有 "(+1 if page crossed)"。
+    // 这意味着即使 addr_abx() 因为跨页返回了 1，
+    // SEC 指令也不允许增加额外周期（写入操作必须稳定，不能贪快）。
+    // 所以强制返回 0。
+    return 0;
+}
+
+//SED: Set Decimal Mode Flag
+static uint8_t op_sed(CPU* cpu){
+    // 步骤 1: 执行操作
+    // 对应图片里的 "sets the decimal mode flag" (D = 1)
+    set_flag(cpu, D, 1);
+    // 步骤 2: 更新标志位
+    // 没有影响标志位的操作，所以不需要更新
+    // 图片里没有 "(+1 if page crossed)"。
+    // 这意味着即使 addr_abx() 因为跨页返回了 1，
+    // SED 指令也不允许增加额外周期（写入操作必须稳定，不能贪快）。
+    // 所以强制返回 0。
+    return 0;
+}
+
+//SEI: Set Interrupt Disable Flag
+static uint8_t op_sei(CPU* cpu){
+    // 步骤 1: 执行操作
+    // 对应图片里的 "sets the interrupt disable flag" (I = 1)
+    set_flag(cpu, I, 1);
+    // 步骤 2: 更新标志位
+    // 没有影响标志位的操作，所以不需要更新
+    // 图片里没有 "(+1 if page crossed)"。
+    // 这意味着即使 addr_abx() 因为跨页返回了 1，
+    // SEI 指令也不允许增加额外周期（写入操作必须稳定，不能贪快）。
+    // 所以强制返回 0。
+    return 0;
+}
+
+static uint8_t op_nop(CPU* cpu){
+    // 步骤 1: 执行操作
+    // 对应图片里的 "does nothing" (NOP)
+    // 没有改变任何寄存器或内存的操作，所以不需要执行任何操作。
+    // 步骤 2: 更新标志位
+    // 没有影响标志位的操作，所以不需要更新
+    // 图片里没有 "(+1 if page crossed)"。
+    // 这意味着即使 addr_abx() 因为跨页返回了 1，
+    // NOP 指令也不允许增加额外周期（写入操作必须稳定，不能贪快）。
+    // 所以强制返回 0。
+    return 0;
+}
+
+// AND: Logical AND with Accumulator
+static uint8_t op_and(CPU* cpu){
+    // 步骤 1: 取数
+    // 对应图片 Description: "using the contents of a byte of memory"
+    fetch(cpu);
+
+    // 步骤 2: 执行运算
+    // 对应图片 Operation: "A,Z,N = A & M"
+    // C语言中按位与操作符是 '&'
+    cpu->a = cpu->a & cpu->fetched_data;
+
+    // 步骤 3: 更新标志位
+    // 对应图片 Flags 表格: "Z: Set if A = 0"
+    set_flag(cpu, Z, cpu->a == 0x00);
+    
+    // 对应图片 Flags 表格: "N: Set if bit 7 set"
+    set_flag(cpu, N, cpu->a & 0x80);
+
+    // 步骤 4: 时钟周期
+    // 对应图片 Cycles 表格: 很多模式都有 "(+1 if page crossed)"
+    // 这意味着如果寻址时跨页了，AND 指令允许系统增加 1 个周期。
+    return 1;
+}
+
+//ORA: Logical OR with Accumulator
+static uint8_t op_ora(CPU* cpu){
+    // 步骤 1: 取数
+    // 对应图片 Description: "using the contents of a byte of memory"
+    fetch(cpu);
+
+    // 步骤 2: 执行运算
+    // 对应图片 Operation: "A,Z,N = A | M"
+    // C语言中按位或操作符是 '|'
+    cpu->a = cpu->a | cpu->fetched_data;
+
+    // 步骤 3: 更新标志位
+    // 对应图片 Flags 表格: "Z: Set if A = 0"
+    set_flag(cpu, Z, cpu->a == 0x00);
+    
+    // 对应图片 Flags 表格: "N: Set if bit 7 set"
+    set_flag(cpu, N, cpu->a & 0x80);
+
+    // 步骤 4: 时钟周期
+    // 对应图片 Cycles 表格: 很多模式都有 "(+1 if page crossed)"
+    // 这意味着如果寻址时跨页了，ORA 指令允许系统增加 1 个周期。
+    return 1;
+}
+
+//EOR: Exclusive OR with Accumulator
+static uint8_t op_eor(CPU* cpu){
+    // 步骤 1: 取数
+    // 对应图片 Description: "using the contents of a byte of memory"
+    fetch(cpu);
+
+    // 步骤 2: 执行运算
+    // 对应图片 Operation: "A,Z,N = A ^ M"
+    // C语言中按位异或操作符是 '^'
+    cpu->a = cpu->a ^ cpu->fetched_data;
+
+    // 步骤 3: 更新标志位
+    // 对应图片 Flags 表格: "Z: Set if A = 0"
+    set_flag(cpu, Z, cpu->a == 0x00);
+    
+    // 对应图片 Flags 表格: "N: Set if bit 7 set"
+    set_flag(cpu, N, cpu->a & 0x80);
+
+    // 步骤 4: 时钟周期
+    // 对应图片 Cycles 表格: 很多模式都有 "(+1 if page crossed)"
+    // 这意味着如果寻址时跨页了，EOR 指令允许系统增加 1 个周期。
+    return 1;
+
+}
+
+// CMP: Compare Accumulator with Memory
+/*
+对于 CMP (比较 A), CPX (比较 X), CPY (比较 Y) 这三个指令，请记住这个黄金法则：
+
+C (Carry)：不需要做减法看结果，直接看 寄存器 >= 内存数 吗？是就是 1，否则 0。
+
+Z (Zero)：直接看 寄存器 == 内存数 吗？
+
+N (Negative)：只有这个才需要看 (寄存器 - 内存数) 结果的最高位。
+*/
+static uint8_t op_cmp(CPU* cpu){
+    fetch(cpu);
+
+    // 【修正1】：使用 uint16_t 来容纳结果，避免 int8_t 的溢出误判
+    // 逻辑上相当于做减法： A - M
+    uint16_t temp = (uint16_t)cpu->a - (uint16_t)cpu->fetched_data;
+
+    // 【修正2】：C (Carry) 标志位
+    // 官方定义：Set if A >= M
+    // 直接用原始数值比较最安全，绝对不会错
+    set_flag(cpu, C, cpu->a >= cpu->fetched_data);
+
+    // Z (Zero) 标志位
+    // Set if A == M (意味着减法结果低8位为0)
+    set_flag(cpu, Z, (temp & 0x00FF) == 0x0000);
+
+    // N (Negative) 标志位
+    // 取结果的第 7 位 (bit 7)
+    set_flag(cpu, N, temp & 0x0080);
+
+    return 1;
+}
+
+//CPX: Compare X Register with Memory
+static uint8_t op_cpx(CPU* cpu){
+    fetch(cpu);
+
+    // 【修正1】：使用 uint16_t 来容纳结果，避免 int8_t 的溢出误判
+    // 逻辑上相当于做减法： X - M
+    uint16_t temp = (uint16_t)cpu->x - (uint16_t)cpu->fetched_data;
+
+    // 【修正2】：C (Carry) 标志位
+    // 官方定义：Set if X >= M
+    // 直接用原始数值比较最安全，绝对不会错
+    set_flag(cpu, C, cpu->x >= cpu->fetched_data);
+
+    // Z (Zero) 标志位
+    // Set if X == M (意味着减法结果低8位为0)
+    set_flag(cpu, Z, (temp & 0x00FF) == 0x0000);
+
+    // N (Negative) 标志位
+    // 取结果的第 7 位 (bit 7)
+    set_flag(cpu, N, temp & 0x0080);
+
+    return 1;
+}
+
+//CPY: Compare Y Register with Memory
+static uint8_t op_cpy(CPU* cpu){
+    fetch(cpu);
+
+    // 【修正1】：使用 uint16_t 来容纳结果，避免 int8_t 的溢出误判
+    // 逻辑上相当于做减法： Y - M
+    uint16_t temp = (uint16_t)cpu->y - (uint16_t)cpu->fetched_data;
+
+    // 【修正2】：C (Carry) 标志位
+    // 官方定义：Set if X >= M
+    // 直接用原始数值比较最安全，绝对不会错
+    set_flag(cpu, C, cpu->y >= cpu->fetched_data);
+
+    // Z (Zero) 标志位
+    // Set if X == M (意味着减法结果低8位为0)
+    set_flag(cpu, Z, (temp & 0x00FF) == 0x0000);
+
+    // N (Negative) 标志位
+    // 取结果的第 7 位 (bit 7)
+    set_flag(cpu, N, temp & 0x0080);
+
+    return 1;
+}
+
+// BIT: Bit Test
+static uint8_t op_bit(CPU* cpu){
+    // 步骤 1: 取数 (M)
+    fetch(cpu); 
+
+    // 步骤 2: 执行 AND 运算（为了设置 Z）
+    // 注意：结果存临时变量，不要修改 cpu->a
+    uint8_t temp = cpu->a & cpu->fetched_data;
+
+    // 步骤 3: 设置 Z (Zero) 标志
+    // 规则：如果 (A & M) == 0，则 Z = 1
+    set_flag(cpu, Z, temp == 0x00);
+
+    // 步骤 4: 设置 N (Negative) 标志
+    // 规则：直接取内存数据 (fetched_data) 的第 7 位
+    // 注意：这里是用 cpu->fetched_data 判断，而不是 temp！
+    set_flag(cpu, N, cpu->fetched_data & (1 << 7)); // 0x80
+
+    // 步骤 5: 设置 V (Overflow) 标志
+    // 规则：直接取内存数据 (fetched_data) 的第 6 位
+    set_flag(cpu, V, cpu->fetched_data & (1 << 6)); // 0x40
+
+    // 步骤 6: 返回周期
+    // BIT 指令通常不涉及跨页奖励，返回 0
+    return 0;
+
+}
+
+//INC: Increment Memory by One
+static uint8_t op_inc(CPU* cpu){
+    // 步骤 1: 取数
+    fetch(cpu);
+
+    // 步骤 2: 执行递增
+    // 对应图片 Operation: "M = M + 1"
+    // 注意：结果存临时变量，不要修改 cpu->fetched_data
+    uint8_t temp = cpu->fetched_data + 1;
+    cpu_write(cpu, cpu->addr_abs, temp);
+    // 步骤 3: 更新标志位
+    // 对应图片 Flags 表格: "Z: Set if M = 0"
+    set_flag(cpu, Z, temp == 0x00);
+    
+    // 对应图片 Flags 表格: "N: Set if bit 7 set"
+    set_flag(cpu, N, temp & 0x80);
+
+    // 步骤 4: 时钟周期
+    return 0;
+}
+
+//INX: Increment X Register by One
+static uint8_t op_inx(CPU* cpu){
+    // 步骤 1: 执行递增
+    // 对应图片 Operation: "X = X + 1"
+    // 注意：结果存临时变量，不要修改 cpu->x
+    uint8_t temp = cpu->x + 1;
+    cpu->x = temp;
+
+    // 步骤 2: 更新标志位
+    // 对应图片 Flags 表格: "Z: Set if X = 0"
+    set_flag(cpu, Z, temp == 0x00);
+    
+    // 对应图片 Flags 表格: "N: Set if bit 7 set"
+    set_flag(cpu, N, temp & 0x80);
+
+    // 步骤 3: 时钟周期
+    return 0;
+}
+
+//INY: Increment Y Register by One
+static uint8_t op_iny(CPU* cpu){
+    // 步骤 1: 执行递增
+    // 对应图片 Operation: "Y = Y + 1"
+    // 注意：结果存临时变量，不要修改 cpu->y
+    uint8_t temp = cpu->y + 1;
+    cpu->y = temp;
+
+    // 步骤 2: 更新标志位
+    // 对应图片 Flags 表格: "Z: Set if Y = 0"
+    set_flag(cpu, Z, temp == 0x00);
+    
+    // 对应图片 Flags 表格: "N: Set if bit 7 set"
+    set_flag(cpu, N, temp & 0x80);
+
+    // 步骤 3: 时钟周期
+    return 0;
+}
+
+//DEC: Decrement Memory by One
+static uint8_t op_dec(CPU* cpu){
+    // 步骤 1: 取数
+    fetch(cpu);
+
+    // 步骤 2: 执行递减
+    // 对应图片 Operation: "M = M - 1"
+    // 注意：结果存临时变量，不要修改 cpu->fetched_data
+    uint8_t temp = cpu->fetched_data - 1;
+    cpu_write(cpu, cpu->addr_abs, temp);
+    // 步骤 3: 更新标志位
+    // 对应图片 Flags 表格: "Z: Set if M = 0"
+    set_flag(cpu, Z, temp == 0x00);
+    
+    // 对应图片 Flags 表格: "N: Set if bit 7 set"
+    set_flag(cpu, N, temp & 0x80);
+
+    // 步骤 4: 时钟周期
+    return 0;
+}
+//DEX: Decrement X Register by One
+static uint8_t op_dex(CPU* cpu){
+    // 步骤 1: 执行递减
+    // 对应图片 Operation: "X = X - 1"
+    // 注意：结果存临时变量，不要修改 cpu->x
+    uint8_t temp = cpu->x - 1;
+    cpu->x = temp;
+
+    // 步骤 2: 更新标志位
+    // 对应图片 Flags 表格: "Z: Set if X = 0"
+    set_flag(cpu, Z, temp == 0x00);
+    
+    // 对应图片 Flags 表格: "N: Set if bit 7 set"
+    set_flag(cpu, N, temp & 0x80);
+
+    // 步骤 3: 时钟周期
+    return 0;
+}
+
+//DEY: Decrement Y Register by One
+static uint8_t op_dey(CPU* cpu){
+    // 步骤 1: 执行递减
+    // 对应图片 Operation: "Y = Y - 1"
+    // 注意：结果存临时变量，不要修改 cpu->y
+    uint8_t temp = cpu->y - 1;
+    cpu->y = temp;
+
+    // 步骤 2: 更新标志位
+    // 对应图片 Flags 表格: "Z: Set if Y = 0"
+    set_flag(cpu, Z, temp == 0x00);
+    
+    // 对应图片 Flags 表格: "N: Set if bit 7 set"
+    set_flag(cpu, N, temp & 0x80);
+
+    // 步骤 3: 时钟周期
+    return 0;
+}
+
+//PHA: Push Accumulator on Stack
+static uint8_t op_pha(CPU* cpu){
+    // 步骤 1: 计算堆栈的物理地址并写入
+    // 6502 堆栈固定在 0x0100 页面
+    cpu_write(cpu, 0x0100 + cpu->stkp, cpu->a);
+
+    // 步骤 2: 移动堆栈指针
+    // 6502 是"向下生长"的：写入后，指针减小
+    cpu->stkp--;
+
+    // 步骤 3: 返回周期
+    // 隐含寻址，无跨页
+    return 0;
+}
+
+// PHP: Push Processor Status to Stack
+static uint8_t op_php(CPU* cpu){
+    // 步骤 1: 计算堆栈地址并写入
+    // 关键修正：在压入堆栈时，强制将 Break (B) 和 Unused (U) 标志位置为 1
+    // cpu.h 中定义: B = (1<<4), U = (1<<5)
+    // 所以 (1<<4) | (1<<5) = 0x10 | 0x20 = 0x30
+    cpu_write(cpu, 0x0100 + cpu->stkp, cpu->status | B | U);
+
+    // 步骤 2: 移动堆栈指针
+    // 标志位 Z 和 N 不受影响
+    set_flag(cpu, B, 0); // 可选：保持内部状态干净，虽然实际上不应该读它
+    set_flag(cpu, U, 1); // 可选：保持内部状态
+    
+    // 指针减小
+    cpu->stkp--;
+
+    // 步骤 3: 返回周期
+    return 0;
+}
+
+// PLA: Pull Accumulator from Stack
+static uint8_t op_pla(CPU* cpu){
+    // 步骤 1: 必须先移动堆栈指针！
+    // 6502 是"向下生长"的：数据在指针的"上面"
+    cpu->stkp++;
+
+    // 步骤 2: 读取数据
+    cpu->a = cpu_read(cpu, 0x0100 + cpu->stkp);
+
+    // 步骤 3: 更新标志位
+    set_flag(cpu, Z, cpu->a == 0x00);
+    set_flag(cpu, N, cpu->a & 0x80);
+
+    // 步骤 4: 返回周期
+    return 0;
+}
+
+// PLP: Pull Processor Status from Stack
+static uint8_t op_plp(CPU* cpu){
+    // 步骤 1: 先移动指针
+    cpu->stkp++;
+
+    // 步骤 2: 读取状态
+    uint8_t fetched_status = cpu_read(cpu, 0x0100 + cpu->stkp);
+
+    // 步骤 3: 赋值给 Status，但要进行位掩码处理
+    // 规则：
+    // 1. 覆盖除了 B (Bit 4) 和 U (Bit 5) 之外的所有位
+    // 2. 强制 U (Bit 5) 为 1
+    // 3. 强制 B (Bit 4) 为 0 (或者保持原状，因为 B 不在物理寄存器中)
+    
+    // cpu.h 中定义：U = (1<<5), B = (1<<4)
+    // 逻辑：(读取值 且上 "非B") 或上 "U"
+    cpu->status = fetched_status;
+    
+    set_flag(cpu, U, 1); // 必须是 1
+    set_flag(cpu, B, 0); // 必须是 0 (Break 标志不在 CPU 寄存器里存活)
+
+    // 另一种更专业的写法是直接位运算：
+    // cpu->status = (fetched_status & ~B) | U;
+
+    return 0;
+}
+
+// BCC: Branch if Carry Clear
+static uint8_t op_bcc(CPU* cpu){
+    // 步骤 1: 检查跳转条件
+    // BCC 的条件是：Carry Flag 为 0
+    if(get_flag(cpu, C) == 0){
+        // --- 分支成立，开始计费 ---
+        // 费用 1: 只要发生了跳转，就增加 1 个时钟周期
+        cpu->cycles++;
+
+        // 步骤 2: 计算目标地址
+        // addr_rel 是一个有符号的 16 位数 (例如 -5 或 +10)
+        // 这里的 cpu->pc 已经是下一条指令的地址了（在 fetch 阶段被增加了）
+        cpu->addr_abs = cpu->pc + cpu->addr_rel;
+
+        // 步骤 3: 检查跨页 (Page Crossing)
+        // 费用 2: 如果跳转后的地址和当前地址不在同一页 (高 8 位不同)，再加 1 周期
+        // 比如从 0x10FE 跳到了 0x1105
+        if ((cpu->addr_abs & 0xFF00) != (cpu->pc & 0xFF00)) {
+            cpu->cycles++;
+        }
+
+        // 步骤 4: 执行跳转 (修改 PC)
+        cpu->pc = cpu->addr_abs;
+    }
+
+    // 分支指令不需要外部的额外周期反馈，内部已经加完了
+    return 0;
+}
+
+
+//BCS: Branch if Carry Set
+static uint8_t op_bcs(CPU* cpu){
+    // 步骤 1: 检查跳转条件
+    // BCS 的条件是：Carry Flag 为 1
+    if(get_flag(cpu, C) == 1){
+        // --- 分支成立，开始计费 ---
+        // 费用 1: 只要发生了跳转，就增加 1 个时钟周期
+        cpu->cycles++;
+
+        // 步骤 2: 计算目标地址
+        // addr_rel 是一个有符号的 16 位数 (例如 -5 或 +10)
+        // 这里的 cpu->pc 已经是下一条指令的地址了（在 fetch 阶段被增加了）
+        cpu->addr_abs = cpu->pc + cpu->addr_rel;
+
+        // 步骤 3: 检查跨页 (Page Crossing)
+        // 费用 2: 如果跳转后的地址和当前地址不在同一页 (高 8 位不同)，再加 1 周期
+        // 比如从 0x10FE 跳到了 0x1105
+        if ((cpu->addr_abs & 0xFF00) != (cpu->pc & 0xFF00)) {
+            cpu->cycles++;
+        }
+
+        // 步骤 4: 执行跳转 (修改 PC)
+        cpu->pc = cpu->addr_abs;
+    }
+
+    // 分支指令不需要外部的额外周期反馈，内部已经加完了
+    return 0;
+}
+
+//BEQ: Branch if Equal
+static uint8_t op_beq(CPU* cpu){
+    // 步骤 1: 检查跳转条件
+    // BEQ 的条件是：Zero Flag 为 1
+    if(get_flag(cpu, Z) == 1){
+        // --- 分支成立，开始计费 ---
+        // 费用 1: 只要发生了跳转，就增加 1 个时钟周期
+        cpu->cycles++;
+
+        // 步骤 2: 计算目标地址
+        // addr_rel 是一个有符号的 16 位数 (例如 -5 或 +10)
+        // 这里的 cpu->pc 已经是下一条指令的地址了（在 fetch 阶段被增加了）
+        cpu->addr_abs = cpu->pc + cpu->addr_rel;
+
+        // 步骤 3: 检查跨页 (Page Crossing)
+        // 费用 2: 如果跳转后的地址和当前地址不在同一页 (高 8 位不同)，再加 1 周期
+        // 比如从 0x10FE 跳到了 0x1105
+        if ((cpu->addr_abs & 0xFF00) != (cpu->pc & 0xFF00)) {
+            cpu->cycles++;
+        }
+
+        // 步骤 4: 执行跳转 (修改 PC)
+        cpu->pc = cpu->addr_abs;
+    }
+
+    // 分支指令不需要外部的额外周期反馈，内部已经加完了
+    return 0;
+}
+
+//BNE: Branch if Not Equal
+static uint8_t op_bne(CPU* cpu){
+    // 步骤 1: 检查跳转条件
+    // BNE 的条件是：Zero Flag 为 0
+    if(get_flag(cpu, Z) == 0){
+        // --- 分支成立，开始计费 ---
+        // 费用 1: 只要发生了跳转，就增加 1 个时钟周期
+        cpu->cycles++;
+
+        // 步骤 2: 计算目标地址
+        // addr_rel 是一个有符号的 16 位数 (例如 -5 或 +10)
+        // 这里的 cpu->pc 已经是下一条指令的地址了（在 fetch 阶段被增加了）
+        cpu->addr_abs = cpu->pc + cpu->addr_rel;
+
+        // 步骤 3: 检查跨页 (Page Crossing)
+        // 费用 2: 如果跳转后的地址和当前地址不在同一页 (高 8 位不同)，再加 1 周期
+        // 比如从 0x10FE 跳到了 0x1105
+        if ((cpu->addr_abs & 0xFF00) != (cpu->pc & 0xFF00)) {
+            cpu->cycles++;
+        }
+
+        // 步骤 4: 执行跳转 (修改 PC)
+        cpu->pc = cpu->addr_abs;
+    }
+
+    // 分支指令不需要外部的额外周期反馈，内部已经加完了
+    return 0;
+}
+
+//BMI: Branch if Minus
+static uint8_t op_bmi(CPU* cpu){
+    // 步骤 1: 检查跳转条件
+    // BMI 的条件是：Negative Flag 为 1
+    if(get_flag(cpu, N) == 1){
+        // --- 分支成立，开始计费 ---
+        // 费用 1: 只要发生了跳转，就增加 1 个时钟周期
+        cpu->cycles++;
+
+        // 步骤 2: 计算目标地址
+        // addr_rel 是一个有符号的 16 位数 (例如 -5 或 +10)
+        // 这里的 cpu->pc 已经是下一条指令的地址了（在 fetch 阶段被增加了）
+        cpu->addr_abs = cpu->pc + cpu->addr_rel;
+
+        // 步骤 3: 检查跨页 (Page Crossing)
+        // 费用 2: 如果跳转后的地址和当前地址不在同一页 (高 8 位不同)，再加 1 周期
+        // 比如从 0x10FE 跳到了 0x1105
+        if ((cpu->addr_abs & 0xFF00) != (cpu->pc & 0xFF00)) {
+            cpu->cycles++;
+        }
+
+        // 步骤 4: 执行跳转 (修改 PC)
+        cpu->pc = cpu->addr_abs;
+    }
+
+    // 分支指令不需要外部的额外周期反馈，内部已经加完了
+    return 0;
+}
+
+//BPL: Branch if Plus
+static uint8_t op_bpl(CPU* cpu){
+    // 步骤 1: 检查跳转条件
+    // BPL 的条件是：Negative Flag 为 0
+    if(get_flag(cpu, N) == 0){
+        // --- 分支成立，开始计费 ---
+        // 费用 1: 只要发生了跳转，就增加 1 个时钟周期
+        cpu->cycles++;
+
+        // 步骤 2: 计算目标地址
+        // addr_rel 是一个有符号的 16 位数 (例如 -5 或 +10)
+        // 这里的 cpu->pc 已经是下一条指令的地址了（在 fetch 阶段被增加了）
+        cpu->addr_abs = cpu->pc + cpu->addr_rel;
+
+        // 步骤 3: 检查跨页 (Page Crossing)
+        // 费用 2: 如果跳转后的地址和当前地址不在同一页 (高 8 位不同)，再加 1 周期
+        // 比如从 0x10FE 跳到了 0x1105
+        if ((cpu->addr_abs & 0xFF00) != (cpu->pc & 0xFF00)) {
+            cpu->cycles++;
+        }
+
+        // 步骤 4: 执行跳转 (修改 PC)
+        cpu->pc = cpu->addr_abs;
+    }
+
+    // 分支指令不需要外部的额外周期反馈，内部已经加完了
+    return 0;
+}
+
+//BVC: Branch if Overflow Clear
+static uint8_t op_bvc(CPU* cpu){
+    // 步骤 1: 检查跳转条件
+    // BVC 的条件是：Overflow Flag 为 0
+    if(get_flag(cpu, V) == 0){
+        // --- 分支成立，开始计费 ---
+        // 费用 1: 只要发生了跳转，就增加 1 个时钟周期
+        cpu->cycles++;
+
+        // 步骤 2: 计算目标地址
+        // addr_rel 是一个有符号的 16 位数 (例如 -5 或 +10)
+        // 这里的 cpu->pc 已经是下一条指令的地址了（在 fetch 阶段被增加了）
+        cpu->addr_abs = cpu->pc + cpu->addr_rel;
+
+        // 步骤 3: 检查跨页 (Page Crossing)
+        // 费用 2: 如果跳转后的地址和当前地址不在同一页 (高 8 位不同)，再加 1 周期
+        // 比如从 0x10FE 跳到了 0x1105
+        if ((cpu->addr_abs & 0xFF00) != (cpu->pc & 0xFF00)) {
+            cpu->cycles++;
+        }
+
+        // 步骤 4: 执行跳转 (修改 PC)
+        cpu->pc = cpu->addr_abs;
+    }
+
+    // 分支指令不需要外部的额外周期反馈，内部已经加完了
+    return 0;
+}
+
+//BVS: Branch if Overflow Set
+static uint8_t op_bvs(CPU* cpu){
+    // 步骤 1: 检查跳转条件
+    // BVS 的条件是：Overflow Flag 为 1
+    if(get_flag(cpu, V) == 1){
+        // --- 分支成立，开始计费 ---
+        // 费用 1: 只要发生了跳转，就增加 1 个时钟周期
+        cpu->cycles++;
+
+        // 步骤 2: 计算目标地址
+        // addr_rel 是一个有符号的 16 位数 (例如 -5 或 +10)
+        // 这里的 cpu->pc 已经是下一条指令的地址了（在 fetch 阶段被增加了）
+        cpu->addr_abs = cpu->pc + cpu->addr_rel;
+
+        // 步骤 3: 检查跨页 (Page Crossing)
+        // 费用 2: 如果跳转后的地址和当前地址不在同一页 (高 8 位不同)，再加 1 周期      
+        // 比如从 0x10FE 跳到了 0x1105
+        if ((cpu->addr_abs & 0xFF00) != (cpu->pc & 0xFF00)) {
+            cpu->cycles++;
+        }
+
+        // 步骤 4: 执行跳转 (修改 PC)
+        cpu->pc = cpu->addr_abs;
+    }
+
+    // 分支指令不需要外部的额外周期反馈，内部已经加完了
+    return 0;
+}   
+
+// JMP: Jump to Location
+static uint8_t op_jmp(CPU* cpu) {
+    // 步骤 1: 直接修改 PC
+    // cpu->addr_abs 已经在 addrmode 阶段（addr_abs 或 addr_ind）被计算为"目标跳转地址"
+    cpu->pc = cpu->addr_abs;
+
+    // 步骤 2: 返回周期
+    // JMP 不支持跨页奖励，也没有额外的条件判断，直接返回 0
+    return 0;
+}
+
+// JSR: Jump to Subroutine
+static uint8_t op_jsr(CPU* cpu){
+    // 步骤 1: 计算返回地址
+    // 6502 的 JSR 将"JSR 指令的最后一个字节的地址"压入堆栈
+    // 此时 cpu->pc 指向的是下一条指令的开头
+    // 所以减 1 正好就是 JSR 指令的最后一个字节
+    uint16_t return_addr = cpu->pc - 1;
+
+    // 步骤 2: 压栈 (关键修正：必须先高后低！)
+    
+    // 2.1 压入高 8 位 (High Byte)
+    cpu_write(cpu, 0x0100 + cpu->stkp, (return_addr >> 8) & 0xFF);
+    cpu->stkp--;
+
+    // 2.2 压入低 8 位 (Low Byte)
+    cpu_write(cpu, 0x0100 + cpu->stkp, return_addr & 0xFF);
+    cpu->stkp--;
+
+    // 步骤 3: 跳转
+    cpu->pc = cpu->addr_abs;
+
+    // 步骤 4: 返回周期
+    return 0;
+}
+
+//RTS: Return from Subroutine
+static uint8_t op_rts(CPU* cpu){
+    // 步骤 1: 从栈弹出返回地址 (先高后低！)
+    
+    // 1.1 弹出低 8 位 (Low Byte)
+    cpu->stkp++;
+    uint8_t low_byte = cpu_read(cpu, 0x0100 + cpu->stkp);
+    
+
+    // 1.2 弹出高 8 位 (High Byte)
+    cpu->stkp++;
+    uint8_t high_byte = cpu_read(cpu, 0x0100 + cpu->stkp);
+
+
+    // 1.3 合并为 16 位返回地址
+    uint16_t return_addr = (high_byte << 8) | low_byte;
+
+    // 步骤 2: 跳转
+    cpu->pc = return_addr + 1; // 6502 的 RTS 会将返回地址加 1 后跳转
+
+    // 步骤 3: 返回周期
+    return 0;
+}
+
+
+// ASL: Arithmetic Shift Left
+static uint8_t op_asl(CPU* cpu){
+    // 步骤 1: 取数
+    // fetch() 会自动处理：
+    // - 如果是 Accumulator 模式，把 cpu->a 放入 cpu->fetched_data
+    // - 如果是内存模式，把内存值放入 cpu->fetched_data
+    fetch(cpu);
+    
+    // 步骤 2: 获取操作数并移位
+    uint16_t temp = (uint16_t)cpu->fetched_data << 1;
+
+    // 步骤 3: 设置标志位
+    // C (Carry): 如果移出的一位是1 (即原数据的第7位是1，或者结果 > 255)
+    set_flag(cpu, C, (temp & 0xFF00) > 0);
+    
+    // Z (Zero): 低 8 位是否为 0
+    set_flag(cpu, Z, (temp & 0x00FF) == 0x00);
+    
+    // N (Negative): 第 7 位是否为 1
+    set_flag(cpu, N, temp & 0x80);
+
+    // 步骤 4: 写回结果 (关键修正点！)
+    // 需要判断当前的寻址模式是 "累加器" 还是 "内存"
+    if (lookup[cpu->opcode].addrmode == &addr_acc) {
+        // 如果是 ASL A，写回累加器
+        cpu->a = temp & 0x00FF;
+    } else {
+        // 如果是 ASL $xxxx，写回内存
+        cpu_write(cpu, cpu->addr_abs, temp & 0x00FF);
+    }
+
+    // 步骤 5: 返回周期
+    return 0;
+}
+
+
+// LSR: Logical Shift Right
+static uint8_t op_lsr(CPU* cpu){
+    // 步骤 1: 取数
+    // fetch() 会自动处理：
+    // - 如果是 Accumulator 模式，把 cpu->a 放入 cpu->fetched_data
+    // - 如果是内存模式，把内存值放入 cpu->fetched_data
+    fetch(cpu);
+    
+    // 步骤 2: 获取操作数并移位
+    uint16_t temp = (uint16_t)cpu->fetched_data >> 1;
+
+    // 步骤 3: 设置标志位
+    // C (Carry): 如果移出的一位是1 (即原数据的第0位是1)
+    set_flag(cpu, C, cpu->fetched_data & 0x01);
+    
+    // Z (Zero): 低 8 位是否为 0
+    set_flag(cpu, Z, (temp & 0x00FF) == 0x00);
+    
+    // N (Negative): 第 7 位是否为 1
+    set_flag(cpu, N, temp & 0x80);
+
+    // 步骤 4: 写回结果 (关键修正点！)
+    // 需要判断当前的寻址模式是 "累加器" 还是 "内存"
+    if (lookup[cpu->opcode].addrmode == &addr_acc) {
+        // 如果是 ASL A，写回累加器
+        cpu->a = temp & 0x00FF;
+    } else {
+        // 如果是 ASL $xxxx，写回内存
+        cpu_write(cpu, cpu->addr_abs, temp & 0x00FF);
+    }
+
+    // 步骤 5: 返回周期
+    return 0;
+}
+
+// ROL: Rotate Left
+static uint8_t op_rol(CPU* cpu){
+    fetch(cpu);
+    
+    // 逻辑：向左移，旧 Carry 补入最低位
+    uint16_t temp = (uint16_t)(cpu->fetched_data << 1) | get_flag(cpu, C);
+
+    // 步骤 3: 设置标志位
+    // 【关键修正】左移出的位是 Bit 7。
+    // 方法 A：检查原数据的 0x80
+    // 方法 B (推荐)：检查 16 位结果的高 8 位是否有值 (temp > 255)
+    set_flag(cpu, C, (temp & 0xFF00)); 
+    
+    set_flag(cpu, Z, (temp & 0x00FF) == 0x00);
+    set_flag(cpu, N, temp & 0x80);
+
+    // 步骤 4: 写回结果
+    if (lookup[cpu->opcode].addrmode == &addr_acc) {
+        cpu->a = temp & 0x00FF;
+    } else {
+        cpu_write(cpu, cpu->addr_abs, temp & 0x00FF);
+    }
+    return 0;
+}
+
+// ROR: Rotate Right
+static uint8_t op_ror(CPU* cpu){
+    fetch(cpu);
+    
+    // 逻辑：向右移，旧 Carry 补入最高位
+    uint16_t temp = (uint16_t)(cpu->fetched_data >> 1) | (get_flag(cpu, C) << 7);
+
+    // 步骤 3: 设置标志位
+    // ROR 移出的是最低位 (Bit 0)，你的原始写法是对的
+    set_flag(cpu, C, cpu->fetched_data & 0x01);
+    
+    set_flag(cpu, Z, (temp & 0x00FF) == 0x00);
+    set_flag(cpu, N, temp & 0x80);
+
+    // 步骤 4: 写回结果
+    if (lookup[cpu->opcode].addrmode == &addr_acc) {
+        cpu->a = temp & 0x00FF;
+    } else {
+        cpu_write(cpu, cpu->addr_abs, temp & 0x00FF);
+    }
+    return 0;
+}
+
+// ADC: Add with Carry
+static uint8_t op_adc(CPU* cpu) {
+    // 步骤 1: 取数
+    fetch(cpu);
+    
+    // 步骤 2: 执行加法
+    // 我们必须用 16 位变量来存储结果，以便检测进位 (Carry)
+    // 公式: Temp = A + M + C
+    uint16_t temp = (uint16_t)cpu->a + (uint16_t)cpu->fetched_data + (uint16_t)get_flag(cpu, C);
+    
+    // 步骤 3: 设置 Carry (C) 标志
+    // 如果结果 > 255 (即 0xFF)，说明发生了进位
+    // "Set if overflow in bit 7"
+    set_flag(cpu, C, temp > 255);
+    
+    // 步骤 4: 设置 Zero (Z) 标志
+    // 只看结果的低 8 位是否为 0
+    set_flag(cpu, Z, (temp & 0x00FF) == 0);
+    
+    // 步骤 5: 设置 Negative (N) 标志
+    // 看结果的第 7 位 (最高位)
+    set_flag(cpu, N, temp & 0x80);
+    
+    // 步骤 6: 设置 Overflow (V) 标志 (这是最难的部分)
+    // "Set if sign bit is incorrect"
+    // 逻辑：只有当"正数+正数=负数" 或 "负数+负数=正数" 时，才算溢出。
+    // 如果是"正+负"，永远不可能溢出。
+    // 公式解释见下方。
+    set_flag(cpu, V, (~((uint16_t)cpu->a ^ (uint16_t)cpu->fetched_data) & ((uint16_t)cpu->a ^ temp)) & 0x0080);
+    
+    // 步骤 7: 将结果存回 A
+    cpu->a = temp & 0x00FF;
+    
+    // 步骤 8: 返回周期
+    // 图片显示 "+1 if page crossed"，所以返回 1
+    return 1;
+}
+
+//SBC: Subtract with Carry
+static uint8_t op_sbc(CPU* cpu) {
+    // 步骤 1: 取数
+    fetch(cpu);
+    cpu->fetched_data = cpu->fetched_data ^ 0xFF;
+    // 步骤 2: 执行加法
+    // 我们必须用 16 位变量来存储结果，以便检测进位 (Carry)
+    // 公式: Temp = A + M + C
+    uint16_t temp = (uint16_t)cpu->a + (uint16_t)cpu->fetched_data + (uint16_t)get_flag(cpu, C);
+    
+    // 步骤 3: 设置 Carry (C) 标志
+    // 如果结果 > 255 (即 0xFF)，说明发生了进位
+    // "Set if overflow in bit 7"
+    set_flag(cpu, C, temp > 255);
+    
+    // 步骤 4: 设置 Zero (Z) 标志
+    // 只看结果的低 8 位是否为 0
+    set_flag(cpu, Z, (temp & 0x00FF) == 0);
+    
+    // 步骤 5: 设置 Negative (N) 标志
+    // 看结果的第 7 位 (最高位)
+    set_flag(cpu, N, temp & 0x80);
+    
+    // 步骤 6: 设置 Overflow (V) 标志 (这是最难的部分)
+    // "Set if sign bit is incorrect"
+    // 逻辑：只有当"正数+正数=负数" 或 "负数+负数=正数" 时，才算溢出。
+    // 如果是"正+负"，永远不可能溢出。
+    // 公式解释见下方。
+    set_flag(cpu, V, (~((uint16_t)cpu->a ^ (uint16_t)cpu->fetched_data) & ((uint16_t)cpu->a ^ temp)) & 0x0080);
+    
+    // 步骤 7: 将结果存回 A
+    cpu->a = temp & 0x00FF;
+    
+    // 步骤 8: 返回周期
+    // 图片显示 "+1 if page crossed"，所以返回 1
+    return 1;
+}
+
+
+// BRK: Force Interrupt
+static uint8_t op_brk(CPU* cpu) {
+    // 步骤 1: PC 自增 (跳过填充字节)
+    cpu->pc++;
+
+    // 步骤 2: 将 PC 压栈 (先高后低)
+    cpu_write(cpu, 0x0100 + cpu->stkp, (cpu->pc >> 8) & 0xFF);
+    cpu->stkp--;
+    cpu_write(cpu, 0x0100 + cpu->stkp, cpu->pc & 0xFF);
+    cpu->stkp--;
+
+    // 步骤 3: 将状态寄存器压栈
+    // 关键点：软件中断 BRK 发生时，压入堆栈的标志位必须包含 B(Bit 4) 和 U(Bit 5)
+    // cpu.h 中定义: B = (1<<4), U = (1<<5)
+    cpu_write(cpu, 0x0100 + cpu->stkp, cpu->status | B | U);
+    cpu->stkp--;
+
+    // 步骤 4: 设置中断屏蔽标志 (Disable Interrupts)
+    set_flag(cpu, I, 1);
+
+    // 步骤 5: 读取中断向量 (IRQ/BRK Vector: $FFFE - $FFFF)
+    // 并跳转
+    uint16_t lo = cpu_read(cpu, 0xFFFE);
+    uint16_t hi = cpu_read(cpu, 0xFFFF);
+    cpu->pc = (hi << 8) | lo;
+
+    // 步骤 6: 返回 0 (BRK 固定 7 周期，已在表中定义，无需额外返回 1)
+    return 0;
+}
+
+// RTI: Return from Interrupt
+static uint8_t op_rti(CPU* cpu) {
+    // 步骤 1: 弹出状态寄存器
+    cpu->stkp++;
+    uint8_t fetched_status = cpu_read(cpu, 0x0100 + cpu->stkp);
+    
+    // 恢复状态时的标准操作：忽略 B 位，强制 U 位为 1
+    cpu->status = fetched_status;
+    set_flag(cpu, B, 0); // B 标志实际上不在寄存器中存在
+    set_flag(cpu, U, 1); // U 标志总是 1
+
+    // 步骤 2: 弹出 PC (先低后高，与压栈相反)
+    cpu->stkp++;
+    uint16_t lo = cpu_read(cpu, 0x0100 + cpu->stkp);
+    cpu->stkp++;
+    uint16_t hi = cpu_read(cpu, 0x0100 + cpu->stkp);
+
+    cpu->pc = (hi << 8) | lo;
+
+    return 0;
+}
